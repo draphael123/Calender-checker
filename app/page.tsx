@@ -37,30 +37,47 @@ export default function Home() {
     setFilteredEvents(parsedEvents)
     setIsAnalyzing(true)
     
-    // Analyze the schedule
-    setTimeout(() => {
-      const result = analyzeSchedule(parsedEvents, customCoverage)
-      setAnalysis(result)
-      setIsAnalyzing(false)
-      
-      // Auto-save analysis
-      saveAnalysis({
-        events: parsedEvents,
-        analysis: result,
-        coverageProfile: customCoverage ? { id: 'custom', name: 'Custom', coverage: customCoverage, isCustom: true } : undefined,
-      })
-    }, 500)
+    // Analyze the schedule - use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+      try {
+        const result = analyzeSchedule(parsedEvents, customCoverage)
+        setAnalysis(result)
+        setIsAnalyzing(false)
+        
+        // Auto-save analysis (don't block on errors)
+        try {
+          saveAnalysis({
+            events: parsedEvents,
+            analysis: result,
+            coverageProfile: customCoverage ? { id: 'custom', name: 'Custom', coverage: customCoverage, isCustom: true } : undefined,
+          })
+        } catch (saveError) {
+          console.warn('Failed to save analysis:', saveError)
+          // Don't block the UI if save fails
+        }
+      } catch (error) {
+        console.error('Analysis failed:', error)
+        setIsAnalyzing(false)
+        alert('Analysis failed. Please check your file and try again.')
+      }
+    })
   }
 
   const handleCoverageChange = (coverage: Record<number, number>) => {
     setCustomCoverage(coverage)
     if (events.length > 0) {
       setIsAnalyzing(true)
-      setTimeout(() => {
-        const result = analyzeSchedule(events, coverage)
-        setAnalysis(result)
-        setIsAnalyzing(false)
-      }, 300)
+      requestAnimationFrame(() => {
+        try {
+          const result = analyzeSchedule(events, coverage)
+          setAnalysis(result)
+          setIsAnalyzing(false)
+        } catch (error) {
+          console.error('Analysis failed:', error)
+          setIsAnalyzing(false)
+          alert('Failed to update analysis. Please try again.')
+        }
+      })
     }
   }
 

@@ -22,26 +22,51 @@ export function analyzeSchedule(
 
   // Count coverage for each hour
   events.forEach((event) => {
+    // Validate dates
+    if (!event.start || !event.end || isNaN(event.start.getTime()) || isNaN(event.end.getTime())) {
+      console.warn('Invalid event date, skipping:', event)
+      return
+    }
+
     const startHour = event.start.getHours()
     const endHour = event.end.getHours()
     const startMinute = event.start.getMinutes()
     const endMinute = event.end.getMinutes()
 
-    // Calculate coverage for each hour the event spans
-    for (let hour = startHour; hour <= endHour; hour++) {
-      if (hour < 0 || hour >= 24) continue
-
-      let coverage = 1.0 // Full hour coverage
-      
-      // Adjust for partial hours
-      if (hour === startHour && startMinute > 0) {
-        coverage = (60 - startMinute) / 60
+    // Handle events that span multiple days
+    if (startHour > endHour) {
+      // Event spans midnight
+      for (let hour = startHour; hour < 24; hour++) {
+        let coverage = 1.0
+        if (hour === startHour && startMinute > 0) {
+          coverage = (60 - startMinute) / 60
+        }
+        hourlyCoverage[hour] = (hourlyCoverage[hour] || 0) + coverage
       }
-      if (hour === endHour && endMinute < 60) {
-        coverage = Math.min(coverage, endMinute / 60)
+      for (let hour = 0; hour <= endHour; hour++) {
+        let coverage = 1.0
+        if (hour === endHour && endMinute < 60) {
+          coverage = endMinute / 60
+        }
+        hourlyCoverage[hour] = (hourlyCoverage[hour] || 0) + coverage
       }
+    } else {
+      // Normal same-day event
+      for (let hour = startHour; hour <= endHour; hour++) {
+        if (hour < 0 || hour >= 24) continue
 
-      hourlyCoverage[hour] += coverage
+        let coverage = 1.0 // Full hour coverage
+        
+        // Adjust for partial hours
+        if (hour === startHour && startMinute > 0) {
+          coverage = (60 - startMinute) / 60
+        }
+        if (hour === endHour && endMinute < 60) {
+          coverage = Math.min(coverage, endMinute / 60)
+        }
+
+        hourlyCoverage[hour] = (hourlyCoverage[hour] || 0) + coverage
+      }
     }
   })
 

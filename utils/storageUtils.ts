@@ -11,19 +11,38 @@ const STORAGE_KEYS = {
 }
 
 export function saveAnalysis(analysis: Omit<SavedAnalysis, 'id' | 'timestamp'>): SavedAnalysis {
-  const saved: SavedAnalysis = {
-    id: generateId(),
-    timestamp: new Date(),
-    ...analysis,
+  if (typeof window === 'undefined') {
+    // Server-side, return mock
+    return {
+      id: generateId(),
+      timestamp: new Date(),
+      ...analysis,
+    }
   }
 
-  const existing = getSavedAnalyses()
-  existing.unshift(saved) // Add to beginning
-  // Keep only last 50 analyses
-  const limited = existing.slice(0, 50)
-  localStorage.setItem(STORAGE_KEYS.ANALYSES, JSON.stringify(limited))
-  
-  return saved
+  try {
+    const saved: SavedAnalysis = {
+      id: generateId(),
+      timestamp: new Date(),
+      ...analysis,
+    }
+
+    const existing = getSavedAnalyses()
+    existing.unshift(saved) // Add to beginning
+    // Keep only last 50 analyses
+    const limited = existing.slice(0, 50)
+    localStorage.setItem(STORAGE_KEYS.ANALYSES, JSON.stringify(limited))
+    
+    return saved
+  } catch (error) {
+    console.error('Failed to save analysis to localStorage:', error)
+    // Return the analysis object anyway so UI doesn't break
+    return {
+      id: generateId(),
+      timestamp: new Date(),
+      ...analysis,
+    }
+  }
 }
 
 export function getSavedAnalyses(): SavedAnalysis[] {
