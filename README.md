@@ -81,6 +81,15 @@ The app can extract schedules from text like:
 - Recharts for visualizations
 - Lucide React for icons
 
+## Future Enhancements
+
+See [SUGGESTIONS.md](./SUGGESTIONS.md) for 10+ feature suggestions including:
+- Export & Download functionality
+- Customizable coverage requirements
+- Calendar integrations
+- Cost analysis tools
+- And more!
+
 ## License
 
 MIT

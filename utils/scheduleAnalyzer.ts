@@ -1,15 +1,19 @@
-import type { ScheduleEvent, GapAnalysis, TimeSlot } from '@/types'
+import type { ScheduleEvent, GapAnalysis, TimeSlot, CoverageProfile } from '@/types'
 
-// Define expected coverage by hour (0-23)
+// Default expected coverage by hour (0-23)
 // Higher values mean more people needed
-const EXPECTED_COVERAGE: Record<number, number> = {
+const DEFAULT_COVERAGE: Record<number, number> = {
   0: 0.2, 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.2,
   6: 0.3, 7: 0.5, 8: 0.7, 9: 0.9, 10: 1.0, 11: 1.0,
   12: 0.9, 13: 0.8, 14: 1.0, 15: 1.0, 16: 0.9, 17: 0.8,
   18: 0.6, 19: 0.5, 20: 0.4, 21: 0.3, 22: 0.2, 23: 0.2,
 }
 
-export function analyzeSchedule(events: ScheduleEvent[]): GapAnalysis {
+export function analyzeSchedule(
+  events: ScheduleEvent[],
+  customCoverage?: Record<number, number>
+): GapAnalysis {
+  const EXPECTED_COVERAGE = customCoverage || DEFAULT_COVERAGE
   // Initialize hourly coverage tracking
   const hourlyCoverage: Record<number, number> = {}
   for (let i = 0; i < 24; i++) {
@@ -101,5 +105,9 @@ export function analyzeSchedule(events: ScheduleEvent[]): GapAnalysis {
     criticalGaps,
     recommendations,
   }
+}
+
+export function getDefaultCoverage(): Record<number, number> {
+  return { ...DEFAULT_COVERAGE }
 }
 

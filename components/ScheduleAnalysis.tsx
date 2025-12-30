@@ -79,7 +79,7 @@ export default function ScheduleAnalysis({ events, analysis }: ScheduleAnalysisP
       </div>
 
       {/* Coverage Chart */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg">
+      <div id="coverage-chart" className="bg-white rounded-2xl p-6 shadow-lg">
         <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
           <Clock className="w-6 h-6 mr-2 text-purple-600" />
           Hourly Coverage Analysis

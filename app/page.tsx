@@ -1,32 +1,93 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FileUpload from '@/components/FileUpload'
 import ScheduleAnalysis from '@/components/ScheduleAnalysis'
 import HeroSection from '@/components/HeroSection'
-import { analyzeSchedule } from '@/utils/scheduleAnalyzer'
-import type { ScheduleEvent, GapAnalysis } from '@/types'
+import ExportButton from '@/components/ExportButton'
+import CostCalculator from '@/components/CostCalculator'
+import CoverageSettings from '@/components/CoverageSettings'
+import FilterPanel from '@/components/FilterPanel'
+import HistoryView from '@/components/HistoryView'
+import ComparisonView from '@/components/ComparisonView'
+import { analyzeSchedule, getDefaultCoverage } from '@/utils/scheduleAnalyzer'
+import { saveAnalysis } from '@/utils/storageUtils'
+import type { ScheduleEvent, GapAnalysis, CostAnalysis, SavedAnalysis } from '@/types'
 
 export default function Home() {
   const [events, setEvents] = useState<ScheduleEvent[]>([])
+  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([])
   const [analysis, setAnalysis] = useState<GapAnalysis | null>(null)
+  const [costAnalysis, setCostAnalysis] = useState<CostAnalysis | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [customCoverage, setCustomCoverage] = useState<Record<number, number> | undefined>(undefined)
+  const [comparisonSchedules, setComparisonSchedules] = useState<Array<{
+    name: string
+    events: ScheduleEvent[]
+    analysis: GapAnalysis
+  }>>([])
+  const [viewMode, setViewMode] = useState<'analysis' | 'comparison'>('analysis')
+
+  useEffect(() => {
+    setFilteredEvents(events)
+  }, [events])
 
   const handleFileProcessed = (parsedEvents: ScheduleEvent[]) => {
     setEvents(parsedEvents)
+    setFilteredEvents(parsedEvents)
     setIsAnalyzing(true)
     
     // Analyze the schedule
     setTimeout(() => {
-      const result = analyzeSchedule(parsedEvents)
+      const result = analyzeSchedule(parsedEvents, customCoverage)
       setAnalysis(result)
       setIsAnalyzing(false)
+      
+      // Auto-save analysis
+      saveAnalysis({
+        events: parsedEvents,
+        analysis: result,
+        coverageProfile: customCoverage ? { id: 'custom', name: 'Custom', coverage: customCoverage, isCustom: true } : undefined,
+      })
     }, 500)
+  }
+
+  const handleCoverageChange = (coverage: Record<number, number>) => {
+    setCustomCoverage(coverage)
+    if (events.length > 0) {
+      setIsAnalyzing(true)
+      setTimeout(() => {
+        const result = analyzeSchedule(events, coverage)
+        setAnalysis(result)
+        setIsAnalyzing(false)
+      }, 300)
+    }
+  }
+
+  const handleLoadAnalysis = (saved: SavedAnalysis) => {
+    setEvents(saved.events)
+    setFilteredEvents(saved.events)
+    setAnalysis(saved.analysis)
+    if (saved.coverageProfile) {
+      setCustomCoverage(saved.coverageProfile.coverage)
+    }
+  }
+
+  const handleAddComparison = () => {
+    if (events.length > 0 && analysis) {
+      const name = prompt('Enter a name for this schedule:') || `Schedule ${comparisonSchedules.length + 1}`
+      setComparisonSchedules([...comparisonSchedules, { name, events, analysis }])
+      setViewMode('comparison')
+    }
   }
 
   const handleReset = () => {
     setEvents([])
+    setFilteredEvents([])
     setAnalysis(null)
+    setCostAnalysis(null)
+    setComparisonSchedules([])
+    setViewMode('analysis')
   }
 
   return (
@@ -57,6 +118,38 @@ export default function Home() {
               </button>
             </div>
             
+            {/* Toolbar */}
+            {!isAnalyzing && analysis && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-xl flex flex-wrap gap-3 items-center">
+                <CoverageSettings onCoverageChange={handleCoverageChange} currentCoverage={customCoverage} />
+                <FilterPanel events={events} onFiltered={setFilteredEvents} />
+                <HistoryView onLoadAnalysis={handleLoadAnalysis} />
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    onClick={() => setViewMode('analysis')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      viewMode === 'analysis'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Analysis
+                  </button>
+                  <button
+                    onClick={() => setViewMode('comparison')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      viewMode === 'comparison'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Comparison
+                  </button>
+                </div>
+                <ExportButton events={filteredEvents} analysis={analysis} costAnalysis={costAnalysis || undefined} />
+              </div>
+            )}
+
             {isAnalyzing ? (
               <div className="flex flex-col items-center justify-center py-32 bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl">
                 <div className="relative">
@@ -66,8 +159,21 @@ export default function Home() {
                 <p className="text-2xl font-semibold text-gray-700 mb-2">Analyzing your schedule...</p>
                 <p className="text-gray-500">This will just take a moment</p>
               </div>
+            ) : viewMode === 'comparison' ? (
+              <ComparisonView
+                schedules={comparisonSchedules}
+                onAddSchedule={handleAddComparison}
+                onRemoveSchedule={(index) => {
+                  setComparisonSchedules(comparisonSchedules.filter((_, i) => i !== index))
+                }}
+              />
             ) : (
-              analysis && <ScheduleAnalysis events={events} analysis={analysis} />
+              analysis && (
+                <>
+                  <CostCalculator analysis={analysis} onCostCalculated={setCostAnalysis} />
+                  <ScheduleAnalysis events={filteredEvents} analysis={analysis} />
+                </>
+              )
             )}
           </div>
         </div>
