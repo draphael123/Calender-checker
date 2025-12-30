@@ -14,7 +14,10 @@
     "react-dom": "^18.2.0",
     "ical.js": "^1.5.0",
     "recharts": "^2.10.3",
-    "lucide-react": "^0.303.0"
+    "lucide-react": "^0.303.0",
+    "pdfjs-dist": "^3.11.174",
+    "mammoth": "^1.6.0",
+    "tesseract.js": "^5.0.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Upload, Calendar, FileText } from 'lucide-react'
-import { parseICSFile, parseTextFile } from '@/utils/calendarParser'
+import { Upload, Calendar, FileText, Image, File } from 'lucide-react'
+import { parseFile } from '@/utils/fileParser'
 import type { ScheduleEvent } from '@/types'
 
 interface FileUploadProps {
@@ -12,34 +12,41 @@ interface FileUploadProps {
 export default function FileUpload({ onFileProcessed }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = async (file: File) => {
     setIsProcessing(true)
     setError(null)
+    setProcessingStatus('Reading file...')
 
     try {
-      const text = await file.text()
-      let events: ScheduleEvent[] = []
-
-      if (file.name.endsWith('.ics') || file.type === 'text/calendar') {
-        events = parseICSFile(text)
-      } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-        events = parseTextFile(text)
+      // Determine file type for status message
+      const fileName = file.name.toLowerCase()
+      if (fileName.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i)) {
+        setProcessingStatus('Extracting text from image (this may take a moment)...')
+      } else if (fileName.endsWith('.pdf')) {
+        setProcessingStatus('Extracting text from PDF...')
+      } else if (fileName.match(/\.(doc|docx)$/i)) {
+        setProcessingStatus('Extracting text from Word document...')
       } else {
-        throw new Error('Unsupported file format. Please upload a .ics or .txt file.')
+        setProcessingStatus('Processing calendar file...')
       }
+
+      const events = await parseFile(file)
 
       if (events.length === 0) {
-        throw new Error('No events found in the file.')
+        throw new Error('No calendar events found in the file. Please ensure the file contains date and time information.')
       }
 
+      setProcessingStatus('Analyzing schedule...')
       onFileProcessed(events)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process file')
     } finally {
       setIsProcessing(false)
+      setProcessingStatus('')
     }
   }
 
@@ -83,7 +90,7 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".ics,.txt,text/calendar,text/plain"
+          accept=".ics,.txt,.pdf,.doc,.docx,image/*,text/calendar,text/plain,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileInput}
           className="hidden"
         />
@@ -92,7 +99,7 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
           {isProcessing ? (
             <>
               <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600"></div>
-              <p className="text-lg text-gray-700">Processing your calendar...</p>
+              <p className="text-lg text-gray-700">{processingStatus || 'Processing your calendar...'}</p>
             </>
           ) : (
             <>
@@ -112,9 +119,27 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
                 <p className="text-gray-600 mb-4">
                   or click to browse
                 </p>
-                <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                  <FileText className="w-4 h-4" />
-                  <span>Supports .ics and .txt files</span>
+                <div className="flex items-center justify-center space-x-2 text-sm text-gray-500 flex-wrap gap-2">
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>.ics</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <FileText className="w-4 h-4" />
+                    <span>.txt</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <File className="w-4 h-4" />
+                    <span>.pdf</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <File className="w-4 h-4" />
+                    <span>.doc/.docx</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Image className="w-4 h-4" />
+                    <span>Images</span>
+                  </div>
                 </div>
               </div>
             </>
@@ -130,12 +155,17 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
       )}
 
       <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl">
-        <h4 className="font-bold text-lg mb-3 text-gray-800">📋 How to use:</h4>
+        <h4 className="font-bold text-lg mb-3 text-gray-800">📋 Supported File Types:</h4>
         <ul className="space-y-2 text-gray-700">
-          <li>• Export your calendar as an .ics file from Google Calendar, Outlook, or Apple Calendar</li>
-          <li>• Or create a text file with format: Title, Start Date, End Date</li>
-          <li>• Upload it here to analyze coverage gaps</li>
+          <li>• <strong>Calendar files:</strong> .ics (export from Google Calendar, Outlook, Apple Calendar)</li>
+          <li>• <strong>Text files:</strong> .txt (format: Title, Start Date, End Date)</li>
+          <li>• <strong>PDF documents:</strong> .pdf (with readable text containing dates/times)</li>
+          <li>• <strong>Word documents:</strong> .doc, .docx (with calendar information)</li>
+          <li>• <strong>Images:</strong> .jpg, .png, .gif, .bmp, .webp (photos of calendars or schedules)</li>
         </ul>
+        <p className="mt-3 text-sm text-gray-600">
+          💡 <strong>Tip:</strong> For images, ensure the text is clear and readable for best results. OCR processing may take a moment.
+        </p>
       </div>
     </div>
   )
