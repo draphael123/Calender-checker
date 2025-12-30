@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Calendar Checker & Feedback',
-  description: 'Analyze your calendar schedule and find gaps based on volume cadence',
+  title: 'Fountain Vitality - Smart Schedule Analysis',
+  description: 'Transform your team\'s schedule into actionable insights. Optimize coverage, save time, and make data-driven scheduling decisions with AI-powered analysis.',
 }
 
 export default function RootLayout({

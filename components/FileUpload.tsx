@@ -113,11 +113,14 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
               </div>
               
               <div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  Drop your calendar file here
+                <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                  Ready to Optimize Your Schedule?
                 </h3>
-                <p className="text-gray-600 mb-4">
-                  or click to browse
+                <p className="text-lg text-gray-700 mb-2 font-medium">
+                  Drop your file here or click to browse
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  We'll analyze it instantly and show you exactly where you need more coverage
                 </p>
                 <div className="flex items-center justify-center space-x-2 text-sm text-gray-500 flex-wrap gap-2">
                   <div className="flex items-center space-x-1">
@@ -154,18 +157,55 @@ export default function FileUpload({ onFileProcessed }: FileUploadProps) {
         </div>
       )}
 
-      <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl">
-        <h4 className="font-bold text-lg mb-3 text-gray-800">📋 Supported File Types:</h4>
-        <ul className="space-y-2 text-gray-700">
-          <li>• <strong>Calendar files:</strong> .ics (export from Google Calendar, Outlook, Apple Calendar)</li>
-          <li>• <strong>Text files:</strong> .txt (format: Title, Start Date, End Date)</li>
-          <li>• <strong>PDF documents:</strong> .pdf (with readable text containing dates/times)</li>
-          <li>• <strong>Word documents:</strong> .doc, .docx (with calendar information)</li>
-          <li>• <strong>Images:</strong> .jpg, .png, .gif, .bmp, .webp (photos of calendars or schedules)</li>
-        </ul>
-        <p className="mt-3 text-sm text-gray-600">
-          💡 <strong>Tip:</strong> For images, ensure the text is clear and readable for best results. OCR processing may take a moment.
-        </p>
+      <div className="mt-8 p-8 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl shadow-xl border-2 border-purple-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+          <h4 className="font-bold text-2xl text-gray-800">Supported File Types</h4>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div className="bg-white/80 rounded-xl p-4 shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
+              <strong className="text-gray-800">Calendar files:</strong>
+            </div>
+            <p className="text-sm text-gray-600">.ics (Google Calendar, Outlook, Apple Calendar)</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-4 shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <strong className="text-gray-800">Text files:</strong>
+            </div>
+            <p className="text-sm text-gray-600">.txt (Title, Start Date, End Date format)</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-4 shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <File className="w-5 h-5 text-pink-600" />
+              <strong className="text-gray-800">PDF documents:</strong>
+            </div>
+            <p className="text-sm text-gray-600">.pdf (with readable text containing dates/times)</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-4 shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <File className="w-5 h-5 text-cyan-600" />
+              <strong className="text-gray-800">Word documents:</strong>
+            </div>
+            <p className="text-sm text-gray-600">.doc, .docx (with calendar information)</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-4 shadow-md md:col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Image className="w-5 h-5 text-green-600" />
+              <strong className="text-gray-800">Images:</strong>
+            </div>
+            <p className="text-sm text-gray-600">.jpg, .png, .gif, .bmp, .webp (photos of calendars or schedules with OCR)</p>
+          </div>
+        </div>
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
+          <p className="text-sm text-gray-700">
+            <span className="font-bold text-yellow-700">💡 Pro Tip:</span> For images, ensure the text is clear and readable for best OCR results. Processing may take a moment for large images.
+          </p>
+        </div>
       </div>
     </div>
   )
