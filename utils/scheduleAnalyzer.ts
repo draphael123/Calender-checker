@@ -13,6 +13,22 @@ export function analyzeSchedule(
   events: ScheduleEvent[],
   customCoverage?: Record<number, number>
 ): GapAnalysis {
+  // Validate input
+  if (!events || events.length === 0) {
+    // Return empty analysis if no events
+    return {
+      timeSlots: Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        requiredCoverage: (customCoverage || DEFAULT_COVERAGE)[i] || 0.5,
+        actualCoverage: 0,
+        gap: (customCoverage || DEFAULT_COVERAGE)[i] || 0.5,
+      })),
+      totalGaps: 24 * 0.5,
+      criticalGaps: [],
+      recommendations: ['No events found in schedule.'],
+    }
+  }
+
   const EXPECTED_COVERAGE = customCoverage || DEFAULT_COVERAGE
   // Initialize hourly coverage tracking
   const hourlyCoverage: Record<number, number> = {}

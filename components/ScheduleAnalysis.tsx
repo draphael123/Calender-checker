@@ -10,6 +10,15 @@ interface ScheduleAnalysisProps {
 }
 
 export default function ScheduleAnalysis({ events, analysis }: ScheduleAnalysisProps) {
+  // Safety check
+  if (!analysis || !events) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-lg text-center">
+        <p className="text-gray-600">No analysis data available.</p>
+      </div>
+    )
+  }
+
   const formatHour = (hour: number) => {
     const period = hour >= 12 ? 'PM' : 'AM'
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour

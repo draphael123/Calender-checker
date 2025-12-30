@@ -33,41 +33,66 @@ export default function Home() {
   }, [events])
 
   const handleFileProcessed = (parsedEvents: ScheduleEvent[]) => {
+    console.log('File processed, events:', parsedEvents.length)
+    
+    // Validate events first
+    if (!parsedEvents || parsedEvents.length === 0) {
+      alert('No valid events found in the file.')
+      return
+    }
+
     setEvents(parsedEvents)
     setFilteredEvents(parsedEvents)
     setIsAnalyzing(true)
     
-    // Analyze the schedule - use requestAnimationFrame for better performance
-    requestAnimationFrame(() => {
+    // Set a timeout fallback to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Analysis timeout - forcing completion')
+      setIsAnalyzing(false)
+      if (!analysis) {
+        alert('Analysis is taking longer than expected. Please try again or check your file.')
+      }
+    }, 10000) // 10 second timeout
+    
+    // Use setTimeout to ensure it runs after state updates
+    setTimeout(() => {
       try {
+        console.log('Starting analysis...')
         const result = analyzeSchedule(parsedEvents, customCoverage)
+        console.log('Analysis complete:', result)
+        
+        clearTimeout(timeoutId) // Clear timeout on success
         setAnalysis(result)
         setIsAnalyzing(false)
         
         // Auto-save analysis (don't block on errors)
-        try {
-          saveAnalysis({
-            events: parsedEvents,
-            analysis: result,
-            coverageProfile: customCoverage ? { id: 'custom', name: 'Custom', coverage: customCoverage, isCustom: true } : undefined,
-          })
-        } catch (saveError) {
-          console.warn('Failed to save analysis:', saveError)
-          // Don't block the UI if save fails
-        }
+        setTimeout(() => {
+          try {
+            saveAnalysis({
+              events: parsedEvents,
+              analysis: result,
+              coverageProfile: customCoverage ? { id: 'custom', name: 'Custom', coverage: customCoverage, isCustom: true } : undefined,
+            })
+            console.log('Analysis saved')
+          } catch (saveError) {
+            console.warn('Failed to save analysis:', saveError)
+          }
+        }, 100)
       } catch (error) {
+        clearTimeout(timeoutId) // Clear timeout on error
         console.error('Analysis failed:', error)
         setIsAnalyzing(false)
-        alert('Analysis failed. Please check your file and try again.')
+        setAnalysis(null)
+        alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your file and try again.`)
       }
-    })
+    }, 100)
   }
 
   const handleCoverageChange = (coverage: Record<number, number>) => {
     setCustomCoverage(coverage)
     if (events.length > 0) {
       setIsAnalyzing(true)
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         try {
           const result = analyzeSchedule(events, coverage)
           setAnalysis(result)
@@ -77,7 +102,7 @@ export default function Home() {
           setIsAnalyzing(false)
           alert('Failed to update analysis. Please try again.')
         }
-      })
+      }, 100)
     }
   }
 

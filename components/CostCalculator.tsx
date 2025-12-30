@@ -15,9 +15,23 @@ export default function CostCalculator({ analysis, onCostCalculated }: CostCalcu
   const [costAnalysis, setCostAnalysis] = useState<CostAnalysis | null>(null)
 
   useEffect(() => {
-    const cost = calculateCostAnalysis(analysis, hourlyRate)
-    setCostAnalysis(cost)
-    onCostCalculated?.(cost)
+    try {
+      const cost = calculateCostAnalysis(analysis, hourlyRate)
+      setCostAnalysis(cost)
+      onCostCalculated?.(cost)
+    } catch (error) {
+      console.error('Cost calculation failed:', error)
+      // Set default cost analysis on error
+      const defaultCost = {
+        hourlyRate,
+        totalGapCost: 0,
+        overtimeCost: 0,
+        potentialSavings: 0,
+        gapCostByHour: {},
+      }
+      setCostAnalysis(defaultCost)
+      onCostCalculated?.(defaultCost)
+    }
   }, [analysis, hourlyRate, onCostCalculated])
 
   if (!costAnalysis) return null
