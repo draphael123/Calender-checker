@@ -61,83 +61,218 @@ export function parseTextForEvents(text: string): ScheduleEvent[] {
   const events: ScheduleEvent[] = []
   const lines = text.split('\n').filter(line => line.trim())
   
-  // Enhanced date and time patterns
+  // Day of week patterns (case insensitive)
+  const dayPattern = /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/gi
+  
+  // Also check for specific date patterns (for backward compatibility)
   const datePatterns = [
-    // MM/DD/YYYY or DD/MM/YYYY
     /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g,
-    // Month name patterns
     /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[uary|ch|il|y|ust|ember|tember|ober|vember|cember]*\s+\d{1,2},?\s+\d{4}\b/gi,
-    // Day of week patterns
-    /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[uary|ch|il|y|ust|ember|tember|ober|vember|cember]*\s+\d{1,2},?\s+\d{4}\b/gi,
-    // ISO dates
     /\b\d{4}-\d{2}-\d{2}\b/g,
   ]
-
-  // Time patterns
-  const timePattern = /\b(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?\b/gi
   
+  // Time patterns - various formats
+  const timePatterns = [
+    // 9:00 AM - 5:00 PM or 9am-5pm
+    /\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\b/gi,
+    // Single time: 9:00 AM or 2pm
+    /\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)\b/gi,
+    // 24-hour format: 09:00 - 17:00
+    /\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b/g,
+  ]
+
+  // Day name to day of week (0 = Sunday, 1 = Monday, etc.)
+  const dayMap: Record<string, number> = {
+    'sunday': 0, 'sun': 0,
+    'monday': 1, 'mon': 1,
+    'tuesday': 2, 'tue': 2,
+    'wednesday': 3, 'wed': 3,
+    'thursday': 4, 'thu': 4,
+    'friday': 5, 'fri': 5,
+    'saturday': 6, 'sat': 6,
+  }
+
+  // Helper to convert time string to 24-hour format
+  function parseTime(timeStr: string, period?: string): { hour: number; minute: number } | null {
+    const match = timeStr.match(/(\d{1,2}):?(\d{2})?/)
+    if (!match) return null
+
+    let hour = parseInt(match[1])
+    const minute = match[2] ? parseInt(match[2]) : 0
+
+    if (period) {
+      const isPM = /PM|pm/.test(period)
+      if (isPM && hour !== 12) hour += 12
+      if (!isPM && hour === 12) hour = 0
+    }
+
+    return { hour, minute }
+  }
+
+  // Get next occurrence of a day of week
+  function getNextDayOfWeek(dayName: string): Date {
+    const dayIndex = dayMap[dayName.toLowerCase()]
+    if (dayIndex === undefined) return new Date()
+
+    const today = new Date()
+    const currentDay = today.getDay()
+    let daysUntil = dayIndex - currentDay
+
+    // If the day has passed this week, get next week's occurrence
+    if (daysUntil <= 0) {
+      daysUntil += 7
+    }
+
+    const targetDate = new Date(today)
+    targetDate.setDate(today.getDate() + daysUntil)
+    return targetDate
+  }
+
   lines.forEach((line) => {
-    // Look for dates in the line
-    const dateMatches: string[] = []
-    datePatterns.forEach(pattern => {
-      const matches = line.match(pattern)
-      if (matches) dateMatches.push(...matches)
-    })
+    // First, try to find day-of-week + time patterns (preferred)
+    const dayMatch = line.match(dayPattern)
+    
+    // If no day of week, try specific date patterns
+    if (!dayMatch) {
+      // Try parsing with specific dates
+      const dateMatches: string[] = []
+      datePatterns.forEach(pattern => {
+        const matches = line.match(pattern)
+        if (matches) dateMatches.push(...matches)
+      })
 
-    if (dateMatches.length > 0) {
-      // Extract time if present
-      const timeMatch = line.match(timePattern)
-      
-      dateMatches.forEach((dateStr) => {
-        try {
-          // Try to parse the date
-          let date = new Date(dateStr)
-          
-          // If date parsing fails, try alternative formats
-          if (isNaN(date.getTime())) {
-            // Try with current year if only month/day provided
-            const today = new Date()
-            const parts = dateStr.split(/[\/\-]/)
-            if (parts.length === 2) {
-              date = new Date(today.getFullYear(), parseInt(parts[0]) - 1, parseInt(parts[1]))
-            }
-          }
+      if (dateMatches.length > 0) {
+        // Parse with specific date
+        const timeRangeMatch = line.match(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\b/gi)
+        const singleTimeMatch = line.match(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)\b/gi)
+        const hour24RangeMatch = line.match(/\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b/)
 
-          if (!isNaN(date.getTime())) {
-            // Apply time if found
-            if (timeMatch) {
-              const [hours, minutes, period] = timeMatch[0].match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/i) || []
-              if (hours && minutes) {
-                let hour24 = parseInt(hours)
-                const min = parseInt(minutes)
-                const isPM = period && /PM|pm/.test(period)
-                
-                if (isPM && hour24 !== 12) hour24 += 12
-                if (!isPM && hour24 === 12) hour24 = 0
-                
-                date.setHours(hour24, min, 0, 0)
+        dateMatches.forEach((dateStr) => {
+          try {
+            let date = new Date(dateStr)
+            if (isNaN(date.getTime())) return
+
+            let startTime: { hour: number; minute: number } | null = null
+            let endTime: { hour: number; minute: number } | null = null
+
+            if (timeRangeMatch) {
+              const range = timeRangeMatch[0]
+              const parts = range.split(/[-–—]/).map(p => p.trim())
+              if (parts.length === 2) {
+                const startMatch = parts[0].match(/(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?/i)
+                const endMatch = parts[1].match(/(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?/i)
+                if (startMatch) startTime = parseTime(startMatch[0], startMatch[3])
+                if (endMatch) endTime = parseTime(endMatch[0], endMatch[3])
+              }
+            } else if (hour24RangeMatch) {
+              startTime = { hour: parseInt(hour24RangeMatch[1]), minute: parseInt(hour24RangeMatch[2]) }
+              endTime = { hour: parseInt(hour24RangeMatch[3]), minute: parseInt(hour24RangeMatch[4]) }
+            } else if (singleTimeMatch) {
+              startTime = parseTime(singleTimeMatch[0], singleTimeMatch[0].match(/(AM|PM|am|pm)/i)?.[0])
+              if (startTime) {
+                endTime = { hour: (startTime.hour + 1) % 24, minute: startTime.minute }
               }
             }
 
-            // Extract event title (text before the date, or use a default)
-            const titleMatch = line.split(dateStr)[0]?.trim()
-            const title = titleMatch && titleMatch.length > 2 
-              ? titleMatch 
-              : `Event on ${date.toLocaleDateString()}`
+            if (startTime && endTime) {
+              const start = new Date(date)
+              start.setHours(startTime.hour, startTime.minute, 0, 0)
+              const end = new Date(date)
+              end.setHours(endTime.hour, endTime.minute, 0, 0)
+              if (end < start) end.setDate(end.getDate() + 1)
 
-            // Create event with 1 hour duration by default
-            const start = new Date(date)
-            const end = new Date(date.getTime() + 60 * 60 * 1000) // Add 1 hour
-            
-            events.push({
-              title,
-              start,
-              end,
-            })
+              let title = line.replace(dateStr, '').replace(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\b/gi, '').trim()
+              title = title.replace(/^[-–—\s,]+|[-–—\s,]+$/g, '').trim() || `Event on ${date.toLocaleDateString()}`
+
+              events.push({ title, start, end })
+            }
+          } catch (error) {
+            console.warn(`Failed to parse date: ${dateStr}`, error)
           }
-        } catch (error) {
-          console.warn(`Failed to parse date: ${dateStr}`, error)
+        })
+      }
+      return
+    }
+
+    // Process day-of-week pattern
+    const dayName = dayMatch[0]
+    const dayIndex = dayMap[dayName.toLowerCase()]
+    if (dayIndex === undefined) return
+
+    // Find time patterns
+    let startTime: { hour: number; minute: number } | null = null
+    let endTime: { hour: number; minute: number } | null = null
+
+    // Try time range pattern first (e.g., "9am-5pm" or "9:00 AM - 5:00 PM")
+    const timeRangeMatch = line.match(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\b/gi)
+    if (timeRangeMatch) {
+      const range = timeRangeMatch[0]
+      const parts = range.split(/[-–—]/).map(p => p.trim())
+      if (parts.length === 2) {
+        const startMatch = parts[0].match(/(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?/i)
+        const endMatch = parts[1].match(/(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?/i)
+        
+        if (startMatch) {
+          startTime = parseTime(startMatch[0], startMatch[3])
         }
+        if (endMatch) {
+          endTime = parseTime(endMatch[0], endMatch[3])
+        }
+      }
+    } else {
+      // Try 24-hour format range (e.g., "09:00 - 17:00")
+      const hour24RangeMatch = line.match(/\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b/)
+      if (hour24RangeMatch) {
+        startTime = { hour: parseInt(hour24RangeMatch[1]), minute: parseInt(hour24RangeMatch[2]) }
+        endTime = { hour: parseInt(hour24RangeMatch[3]), minute: parseInt(hour24RangeMatch[4]) }
+      } else {
+        // Single time - create 1 hour event
+        const singleTimeMatch = line.match(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)\b/gi)
+        if (singleTimeMatch) {
+          startTime = parseTime(singleTimeMatch[0], singleTimeMatch[0].match(/(AM|PM|am|pm)/i)?.[0])
+          if (startTime) {
+            // Default to 1 hour duration
+            endTime = {
+              hour: (startTime.hour + 1) % 24,
+              minute: startTime.minute
+            }
+          }
+        }
+      }
+    }
+
+    // If we found a day and time, create an event
+    if (startTime && endTime) {
+      const targetDate = getNextDayOfWeek(dayName)
+      const start = new Date(targetDate)
+      start.setHours(startTime.hour, startTime.minute, 0, 0)
+
+      const end = new Date(targetDate)
+      end.setHours(endTime.hour, endTime.minute, 0, 0)
+
+      // If end time is before start time, assume it's next day
+      if (end < start) {
+        end.setDate(end.getDate() + 1)
+      }
+
+      // Extract title (text before day or after time, or use default)
+      let title = line
+        .replace(dayPattern, '')
+        .replace(/\b(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?\b/gi, '')
+        .replace(/\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b/g, '')
+        .trim()
+
+      // Clean up title
+      title = title.replace(/^[-–—\s,]+|[-–—\s,]+$/g, '').trim()
+      
+      if (!title || title.length < 2) {
+        title = `${dayName} ${startTime.hour}:${startTime.minute.toString().padStart(2, '0')} - ${endTime.hour}:${endTime.minute.toString().padStart(2, '0')}`
+      }
+
+      events.push({
+        title,
+        start,
+        end,
       })
     }
   })

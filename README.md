@@ -53,12 +53,25 @@ git push -u origin main
 
 ## How It Works
 
-1. Upload a calendar file (.ics) or image
-2. The app analyzes your schedule
-3. It identifies gaps based on expected volume:
+1. Upload a calendar file, document, or image containing schedule information
+2. The app extracts schedule data by finding:
+   - **Days of the week** (Monday, Tuesday, etc.)
+   - **Times** (9:00 AM, 2:00 PM, etc.)
+   - **Time ranges** (9am-5pm, 2:00 PM - 4:00 PM)
+   - **Specific dates** (if provided)
+3. It analyzes your schedule and identifies gaps based on expected volume:
    - Peak hours (9am-5pm): Higher coverage needed
    - Off-peak hours (after 10pm): Lower coverage acceptable
 4. Get visual feedback on where you need more coverage!
+
+### Supported Schedule Formats
+
+The app can extract schedules from text like:
+- "Monday 9am-5pm"
+- "Tuesday 2:00 PM - 4:00 PM"
+- "Wednesday 09:00 - 17:00"
+- "Thursday 10am"
+- Or any combination of day + time in images, PDFs, or Word documents
 
 ## Tech Stack
 
