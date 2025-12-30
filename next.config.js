@@ -10,19 +10,13 @@ const nextConfig = {
         crypto: false,
         canvas: false,
       }
-    } else {
-      // For server-side, ignore canvas
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        canvas: false,
-      }
     }
     
-    // Ignore canvas module
-    config.externals = config.externals || []
-    config.externals.push({
-      canvas: 'canvas',
-    })
+    // Ignore canvas and other Node.js modules
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    }
     
     return config
   },

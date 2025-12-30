@@ -9,8 +9,16 @@ async function getPdfjs() {
   }
   
   if (!pdfjsLib) {
-    pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+    // Use dynamic import with proper error handling
+    try {
+      pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js')
+      if (pdfjsLib.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+      }
+    } catch (error) {
+      console.error('Failed to load PDF.js:', error)
+      return null
+    }
   }
   
   return pdfjsLib
